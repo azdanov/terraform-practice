@@ -6,10 +6,11 @@ terraform {
     }
   }
   backend "s3" {
-    bucket  = "azdanov-practice-terraform"
-    key     = "practice/terraform.tfstate"
-    profile = "default"
-    region  = "eu-north-1"
+    bucket         = "azdanov-practice-terraform"
+    key            = "practice/terraform.tfstate"
+    profile        = "default"
+    region         = "eu-north-1"
+    dynamodb_table = "practice-terraform"
   }
 }
 
