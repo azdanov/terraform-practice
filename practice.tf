@@ -5,12 +5,8 @@ terraform {
       version = "4.33.0"
     }
   }
-  backend "s3" {
-    bucket         = "azdanov-practice-terraform"
-    key            = "practice/terraform.tfstate"
-    profile        = "default"
-    region         = "eu-north-1"
-    dynamodb_table = "practice-terraform"
+  backend "local" {
+    path = "terraform.tfstate"
   }
 }
 
@@ -78,7 +74,7 @@ resource "aws_instance" "practice" {
 resource "aws_eip" "practice_eip" {
   vpc = true
   lifecycle {
-    prevent_destroy = true
+    # prevent_destroy = true
   }
   tags = {
     Name        = "practice-${var.infra_env}-web-eip"
