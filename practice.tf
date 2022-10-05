@@ -5,6 +5,12 @@ terraform {
       version = "4.33.0"
     }
   }
+  backend "s3" {
+    bucket  = "azdanov-practice-terraform"
+    key     = "practice/terraform.tfstate"
+    profile = "default"
+    region  = "eu-north-1"
+  }
 }
 
 variable "infra_env" {
