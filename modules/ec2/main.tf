@@ -3,9 +3,22 @@ resource "random_shuffle" "subnets" {
   result_count = 1
 }
 
-resource "aws_instance" "practice_web" {
-  ami           = var.instance_ami
-  instance_type = var.instance_size
+module "ec2-instance" {
+  source  = "terraform-aws-modules/ec2-instance/aws"
+  version = "4.1.4"
+
+  name = "practice-${var.infra_env}"
+
+  ami                    = var.instance_ami
+  instance_type          = var.instance_size
+  vpc_security_group_ids = var.security_groups
+  subnet_id              = random_shuffle.subnets.result[0]
+
+  root_block_device = [{
+    volume_size = var.instance_root_device_size
+    volume_type = "gp3"
+  }]
+
   tags = merge(
     {
       Name        = "practice-${var.infra_env}"
@@ -16,14 +29,6 @@ resource "aws_instance" "practice_web" {
     },
     var.tags
   )
-  subnet_id              = random_shuffle.subnets.result[0]
-  vpc_security_group_ids = var.security_groups
-  lifecycle {
-    create_before_destroy = true
-  }
-  root_block_device {
-    volume_size = var.instance_root_device_size
-  }
 }
 
 resource "aws_eip" "practice_addr" {
@@ -43,6 +48,6 @@ resource "aws_eip" "practice_addr" {
 
 resource "aws_eip_association" "eip_assoc" {
   count         = (var.create_eip) ? 1 : 0
-  instance_id   = aws_instance.practice_web.id
+  instance_id   = module.ec2-instance.id[0]
   allocation_id = aws_eip.practice_addr[0].id
 }

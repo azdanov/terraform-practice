@@ -55,7 +55,7 @@ module "ec2_app" {
   infra_role      = "web"
   instance_size   = "t3.micro"
   instance_ami    = data.aws_ami.ubuntu.id
-  subnets         = keys(module.vpc.vpc_public_subnets)
+  subnets         = module.vpc.vpc_public_subnets
   security_groups = [module.vpc.security_group_public]
   tags = {
     Name = "practice-${var.infra_env}-web"
@@ -71,7 +71,7 @@ module "ec2_worker" {
   instance_size             = "t3.micro"
   instance_ami              = data.aws_ami.ubuntu.id
   instance_root_device_size = 12
-  subnets                   = keys(module.vpc.vpc_private_subnets)
+  subnets                   = module.vpc.vpc_private_subnets
   security_groups           = [module.vpc.security_group_private]
   tags = {
     Name = "practice-${var.infra_env}-worker"
@@ -82,9 +82,9 @@ module "ec2_worker" {
 module "vpc" {
   source = "./modules/vpc"
 
-  infra_env = var.infra_env
-
-  # Note we are /17, not /16
-  # So we're only using half of the available
-  vpc_cidr = "10.0.0.0/17"
+  infra_env       = var.infra_env
+  vpc_cidr        = "10.0.0.0/17"
+  azs             = ["eu-north-1a", "eu-north-1b", "eu-north-1c"]
+  public_subnets  = slice(cidrsubnets("10.0.0.0/17", 4, 4, 4, 4, 4, 4), 0, 3)
+  private_subnets = slice(cidrsubnets("10.0.0.0/17", 4, 4, 4, 4, 4, 4), 3, 6)
 }
