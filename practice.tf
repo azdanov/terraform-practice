@@ -22,12 +22,6 @@ variable "default_region" {
   default     = "eu-north-1"
 }
 
-variable "instance_size" {
-  type        = string
-  description = "the size of the instance"
-  default     = "t3.micro"
-}
-
 provider "aws" {
   region  = var.default_region
   profile = "default"
@@ -54,37 +48,43 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Canonical
 }
 
-resource "aws_instance" "practice" {
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = var.instance_size
+module "ec2_app" {
+  source = "./modules/ec2"
+
+  infra_env       = var.infra_env
+  infra_role      = "web"
+  instance_size   = "t3.micro"
+  instance_ami    = data.aws_ami.ubuntu.id
+  subnets         = keys(module.vpc.vpc_public_subnets)
+  security_groups = [module.vpc.security_group_public]
   tags = {
-    Name        = "practice-${var.infra_env}-web"
-    Project     = "practice.dev"
-    Environment = var.infra_env
-    ManagedBy   = "terraform"
+    Name = "practice-${var.infra_env}-web"
   }
-  lifecycle {
-    create_before_destroy = true
-  }
-  root_block_device {
-    volume_size = 8
-  }
+  create_eip = true
 }
 
-resource "aws_eip" "practice_eip" {
-  vpc = true
-  lifecycle {
-    # prevent_destroy = true
-  }
+module "ec2_worker" {
+  source = "./modules/ec2"
+
+  infra_env                 = var.infra_env
+  infra_role                = "worker"
+  instance_size             = "t3.micro"
+  instance_ami              = data.aws_ami.ubuntu.id
+  instance_root_device_size = 12
+  subnets                   = keys(module.vpc.vpc_private_subnets)
+  security_groups           = [module.vpc.security_group_private]
   tags = {
-    Name        = "practice-${var.infra_env}-web-eip"
-    Project     = "practice.dev"
-    Environment = var.infra_env
-    ManagedBy   = "terraform"
+    Name = "practice-${var.infra_env}-worker"
   }
+  create_eip = false
 }
 
-resource "aws_eip_association" "practice_eip_association" {
-  instance_id   = aws_instance.practice.id
-  allocation_id = aws_eip.practice_eip.id
+module "vpc" {
+  source = "./modules/vpc"
+
+  infra_env = var.infra_env
+
+  # Note we are /17, not /16
+  # So we're only using half of the available
+  vpc_cidr = "10.0.0.0/17"
 }
