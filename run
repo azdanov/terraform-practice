@@ -1,14 +1,10 @@
 #!/usr/bin/env bash
 
-# Usage:
-# ./run.sh staging init
-# ./run.sh staging plan
-# ./run.sh staging apply
-# What it does is: terraform -chdir=./staging init -backend-config=../backend-staging.tf
+TF_ENV=$1   # staging, production, etc
+TF_STATE=$2 # network, data, compute
 
-TF_ENV=$1 # staging, production, etc
 ALL_ARGS=("$@")
-REST_ARGS=("${ALL_ARGS[@]:2}")
+REST_ARGS=("${ALL_ARGS[@]:3}")
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
@@ -16,12 +12,19 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 cd "$DIR" || exit
 
 if [ $# -gt 0 ]; then
-  if [ "$2" == "init" ]; then
-    terraform -chdir=./"$TF_ENV" init -backend-config=../backend-"$TF_ENV".tf "${REST_ARGS[@]}"
+
+  if [ ! -d "$TF_ENV/$TF_STATE" ]; then
+    echo >&2 "Directory $DIR/$TF_ENV/$TF_STATE" does not exist
+    exit 1
+  fi
+
+  if [ "$3" == "init" ]; then
+    terraform -chdir=./"$TF_ENV"/"$TF_STATE" init "${REST_ARGS[@]}"
+    # -backend-config="bucket=terraform-practice" \
+    # -backend-config="key=$TF_ENV/$TF_STATE.tfstate"
   else
-    terraform -chdir=./"$TF_ENV" "$2" "${REST_ARGS[@]}"
+    terraform -chdir=./"$TF_ENV"/"$TF_STATE" "$3" "${REST_ARGS[@]}"
   fi
 fi
-
 # Head back to original location to avoid surprises
 cd - || exit
