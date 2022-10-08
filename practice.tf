@@ -5,15 +5,17 @@ terraform {
       version = "4.33.0"
     }
   }
-  backend "local" {
-    path = "terraform.tfstate"
+  backend "s3" {
+    bucket         = "terraform-practice"
+    key            = "practice/terraform.tfstate"
+    region         = "eu-north-1"
+    profile        = "default"
+    dynamodb_table = "terraform-practice"
   }
 }
 
-variable "infra_env" {
-  type        = string
-  description = "infrastucture environment"
-  default     = "staging"
+locals {
+  infra_env = terraform.workspace == "default" ? "dev" : terraform.workspace
 }
 
 variable "default_region" {
@@ -51,14 +53,14 @@ data "aws_ami" "ubuntu" {
 module "ec2_app" {
   source = "./modules/ec2"
 
-  infra_env       = var.infra_env
+  infra_env       = local.infra_env
   infra_role      = "web"
   instance_size   = "t3.micro"
   instance_ami    = data.aws_ami.ubuntu.id
   subnets         = module.vpc.vpc_public_subnets
   security_groups = [module.vpc.security_group_public]
   tags = {
-    Name = "practice-${var.infra_env}-web"
+    Name = "practice-${local.infra_env}-web"
   }
   create_eip = true
 }
@@ -66,7 +68,7 @@ module "ec2_app" {
 module "ec2_worker" {
   source = "./modules/ec2"
 
-  infra_env                 = var.infra_env
+  infra_env                 = local.infra_env
   infra_role                = "worker"
   instance_size             = "t3.micro"
   instance_ami              = data.aws_ami.ubuntu.id
@@ -74,7 +76,7 @@ module "ec2_worker" {
   subnets                   = module.vpc.vpc_private_subnets
   security_groups           = [module.vpc.security_group_private]
   tags = {
-    Name = "practice-${var.infra_env}-worker"
+    Name = "practice-${local.infra_env}-worker"
   }
   create_eip = false
 }
@@ -82,7 +84,7 @@ module "ec2_worker" {
 module "vpc" {
   source = "./modules/vpc"
 
-  infra_env       = var.infra_env
+  infra_env       = local.infra_env
   vpc_cidr        = "10.0.0.0/17"
   azs             = ["eu-north-1a", "eu-north-1b", "eu-north-1c"]
   public_subnets  = slice(cidrsubnets("10.0.0.0/17", 4, 4, 4, 4, 4, 4), 0, 3)
